@@ -1,6 +1,8 @@
 #pragma once
-#include "deeplframework.hpp"
+#include "neuronnetwork.hpp"
+#include "activationfunctions.hpp"
 #include <vector>
+#include <algorithm>
 #include <stdexcept>
 #include <iostream>
 #include <ctime>
@@ -68,8 +70,18 @@ namespace deeplframework {
 			}
 		};
 
-		// Provided inputTrainingDataGen function should return a vector with the expected input training data. Assumes MSE cost function.
-		// CAUTION - THE ENTIRE inputTrainingDataGen VECTOR OUTPUT IS LOADED IN MEMORY
+		std::vector<int> generateRandomSampleIds(int sampleMin, int sampleMax) {
+			std::vector<int> samples;
+			
+			for (int sample = sampleMin; sample < sampleMax; sample++) {
+				samples.push_back(sample);
+			}
+
+			std::random_shuffle(samples.begin(), samples.end());
+			return samples;
+		}
+
+		// Provided inputTrainingDataGen function should return a vector with the expected input training data. Uses MSE cost function.
 		NeuralNetwork mse_fit(NeuralNetwork& model, const int numOfMiniBatches, const int numOfTrainingSamples, std::vector<double>(*inputTrainingDataGen)(int dataIndex),
 			std::vector<double>(*expectedOutputDataGen)(int dataIndex), const int epochs = 11, const double learningRate = 0.1, const bool showUpdates = true, const int numOfSamplesBetweenUpdates = 100) {
 
@@ -83,8 +95,11 @@ namespace deeplframework {
 				std::vector<double> outputs;
 				std::vector<double> expectedOutputs;
 
+				std::vector<int> batches = generateRandomSampleIds(0, numOfMiniBatches);
+				int batchesCompleted = 0;
+
 				// Learn from batches
-				for (int batch = 0; batch < numOfMiniBatches; batch++) {
+				for (int batch : batches) {
 					// For progress updates
 					double cost = 0;
 					double timeStarted = std::time(nullptr);
@@ -94,8 +109,10 @@ namespace deeplframework {
 					// On default, all variables in the following object are set to 0
 					DerivativeSet gradient = DerivativeSet(newModel.getLayerShape(), newModel.getNumOfInputs());
 
+					std::vector<int> sampleids = generateRandomSampleIds(samplesPerBatch * batch, samplesPerBatch * (batch + 1));
+
 					// Calculate gradient
-					for (int sample = batch * samplesPerBatch; sample < samplesPerBatch * (batch + 1); sample++) {
+					for (int sample : sampleids) {
 						DerivativeSet newGradient = DerivativeSet(newModel.getLayerShape(), newModel.getNumOfInputs());
 
 						// Run neural network
@@ -121,7 +138,7 @@ namespace deeplframework {
 								double biasderivative;
 								double aderivative;
 
-								// Represents a jacobian matrix
+								// Represents a gradient vector of the weights
 								std::vector<double> weightderivatives;
 
 								if (l + 1 == modelLayers.size()) {
@@ -161,7 +178,7 @@ namespace deeplframework {
 
 						// Show updates
 						if (showUpdates == true && (sample + 1) % numOfSamplesBetweenUpdates == 0) {
-							std::cout << "Epoch: " << e << "\tBatch: " << batch + 1 << "\tSample: " << sample + 1 << "\tCost: " << cost / ((double) sample + 1.0) << "\t";
+							std::cout << "Epoch: " << e << "\tBatch: " << batch << "\tSample: " << sample + 1 << "\tCost: " << cost / ((double) sample + 1.0) << "\t";
 							std::cout << "Time elapsed: " << std::time(nullptr) - timeStarted << "s\n";
 						}
 					}
@@ -172,7 +189,7 @@ namespace deeplframework {
 					if (showUpdates) {
 						// Average out cost
 						cost /= (double)samplesPerBatch;
-						std::cout << "Epoch: " << e << "\tBatch: " << batch + 1 << "\tCost: " << cost << "\t";
+						std::cout << "Epoch: " << e << "\tBatch: " << ++batchesCompleted << "\tCost: " << cost << "\t";
 						std::cout << "Time elapsed: " << std::time(nullptr) - timeStarted << "s\t";
 						std::cout << "Samples: " << samplesPerBatch << "\n";
 					}

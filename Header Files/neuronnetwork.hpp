@@ -3,8 +3,8 @@
 #include <fstream>
 #include <string>
 #include <ctime>
-#include <stdlib.h>
-#include <exception>
+#include <random>
+
 #include "neuronlayer.hpp"
 
 namespace deeplframework {
@@ -218,12 +218,14 @@ namespace deeplframework {
 		}
 
 		static double GetRandomDouble(double randMin, double randMax) {
-			return ((double)std::rand() * (randMax - randMin)) / RAND_MAX + randMin;
+			std::uniform_real_distribution<double> range(randMin, randMax);
+			std::mt19937 gen;
+			gen.seed(std::random_device{}());
+			
+			return range(gen);
 		}
 
 		static NeuralNetwork CreateRandomNetwork(std::vector<int> layerShape, int numOfInputs, double weightDifference, double biasDifference) {
-			std::srand(std::time(0));
-			
 			std::vector<NeuronLayer> layers;
 
 			int numOfLayerInputs = numOfInputs;
